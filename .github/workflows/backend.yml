@@ -48,6 +48,6 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
 
-      - name: Run Black
+      - name: Check linting
         run: |
-          black .
+          black --check .
