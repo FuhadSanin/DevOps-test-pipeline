@@ -1,0 +1,46 @@
+name: Ephemeral Django Environment
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, closed]
+
+jobs:
+  deploy:
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    environment:
+      name: pr-${{ github.event.pull_request.number }}
+      url: http://pr-${{ github.event.pull_request.number }}.yourdomain.com
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Build and run Docker container
+        run: |
+          docker compose up -d --build
+          echo "Django app running on ephemeral environment for PR #${{ github.event.pull_request.number }}"
+
+      - name: Run migrations
+        run: docker compose exec -T web python manage.py migrate
+
+      - name: Run tests
+        run: docker compose exec -T web python manage.py test
+
+  destroy:
+    if: github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Stop and remove ephemeral environment
+        run: |
+          echo "Destroying environment for PR #${{ github.event.pull_request.number }}"
+          docker compose down -v
